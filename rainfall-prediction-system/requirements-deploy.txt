@@ -1,0 +1,10 @@
+# Minimal runtime for hosting the web app (no notebook / test tooling)
+numpy>=1.23
+pandas>=1.5
+scikit-learn>=1.2
+xgboost>=1.7
+joblib>=1.2
+matplotlib>=3.6
+seaborn>=0.12
+Flask>=2.2
+gunicorn>=21.2

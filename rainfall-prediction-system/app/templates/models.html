@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Model results · Rainfall Predictor{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Model comparison</h1>
+  <p>Six algorithms were trained and evaluated on a <strong>chronological hold-out</strong> (train on the past, test on the most recent days).
+  The winner is chosen by <strong>5-fold stratified cross-validation ROC-AUC on the training data only</strong>, so the test set stays unbiased.</p>
+</section>
+
+{% if not meta or not meta.results %}
+  <div class="alert alert-error">No results found. Run <code>python -m src.train</code> first.</div>
+{% else %}
+  <section class="card">
+    <p class="muted">
+      Selected model: <strong>{{ meta.model_name }}</strong> ·
+      Data: {{ meta.data_source }} ({{ '{:,}'.format(meta.n_rows) }} rows, {{ meta.date_range[0] }} → {{ meta.date_range[1] }}) ·
+      Rainy days: {{ meta.class_balance.rain_pct }}% (imbalance ratio {{ meta.class_balance.imbalance_ratio }} : 1)
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>CV ROC-AUC</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th></tr>
+        </thead>
+        <tbody>
+          {% for r in meta.results %}
+          <tr class="{{ 'best' if r.model == meta.model_name }}">
+            <td>{{ r.model }}{% if r.model == meta.model_name %} <span class="pill pill-high">selected</span>{% endif %}</td>
+            <td>{{ '%.3f'|format(r.cv_roc_auc_mean) }} <span class="muted small">±{{ '%.3f'|format(r.cv_roc_auc_std) }}</span></td>
+            <td>{{ '%.3f'|format(r.test_accuracy) }}</td>
+            <td>{{ '%.3f'|format(r.test_precision) }}</td>
+            <td>{{ '%.3f'|format(r.test_recall) }}</td>
+            <td>{{ '%.3f'|format(r.test_f1) }}</td>
+            <td>{{ '%.3f'|format(r.test_roc_auc) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted small">Accuracy → ROC-AUC columns are measured on the held-out test period. Class weights are used to handle the rain / no-rain imbalance.</p>
+  </section>
+
+  <section class="card">
+    <h3>Charts</h3>
+    <div class="charts charts-wide">
+      <figure><img src="{{ url_for('static', filename='img/model_comparison.png') }}" alt="Bar chart comparing models"></figure>
+      <figure><img src="{{ url_for('static', filename='img/roc_curves.png') }}" alt="ROC curves"></figure>
+      <figure><img src="{{ url_for('static', filename='img/best_confusion_matrix.png') }}" alt="Confusion matrix of the selected model"></figure>
+      <figure><img src="{{ url_for('static', filename='img/feature_importance.png') }}" alt="Feature importance"></figure>
+    </div>
+  </section>
+
+  {% if meta.stratified_split_results %}
+  <section class="card">
+    <h3>Stratified random split (for comparison)</h3>
+    <p class="muted">A random stratified split mixes days from the same weather spells into both train and test, so it can overstate how well the model forecasts the genuinely unseen future. Shown for reference only.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Model</th><th>Accuracy</th><th>F1</th><th>ROC-AUC</th></tr></thead>
+        <tbody>
+          {% for r in meta.stratified_split_results %}
+          <tr><td>{{ r.model }}</td><td>{{ '%.3f'|format(r.test_accuracy) }}</td><td>{{ '%.3f'|format(r.test_f1) }}</td><td>{{ '%.3f'|format(r.test_roc_auc) }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+{% endif %}
+{% endblock %}

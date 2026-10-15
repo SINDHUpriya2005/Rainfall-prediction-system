@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% macro num_field(name) %}
+  {% set lo, hi, unit, label = ranges[name] %}
+  <div class="field {{ 'has-error' if errors.get(name) }}">
+    <label for="{{ name }}">{{ label }}{% if name in required %} <span class="req" title="Required">*</span>{% endif %}
+      {% if unit %}<span class="unit">{{ unit }}</span>{% endif %}</label>
+    <input type="number" step="any" min="{{ lo }}" max="{{ hi }}" id="{{ name }}" name="{{ name }}"
+           value="{{ form.get(name, '') }}" {{ 'required' if name in required }} inputmode="decimal"
+           placeholder="{{ lo|int if lo == lo|int else lo }} – {{ hi|int if hi == hi|int else hi }}">
+    {% if errors.get(name) %}<p class="error">{{ errors[name] }}</p>{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro select_field(name, label, options, blank="Not sure / skip") %}
+  <div class="field {{ 'has-error' if errors.get(name) }}">
+    <label for="{{ name }}">{{ label }}</label>
+    <select id="{{ name }}" name="{{ name }}">
+      <option value="">{{ blank }}</option>
+      {% for o in options %}<option value="{{ o }}" {{ 'selected' if form.get(name) == o }}>{{ o }}</option>{% endfor %}
+    </select>
+    {% if errors.get(name) %}<p class="error">{{ errors[name] }}</p>{% endif %}
+  </div>
+{% endmacro %}
+
+<section class="hero">
+  <h1>Will it rain tomorrow?</h1>
+  <p>Enter today's weather observations. Fields marked <span class="req">*</span> are required; leave the rest
+  blank and the model will fill them in with typical values.</p>
+</section>
+
+{% if load_error %}
+  <div class="alert alert-error"><strong>Model not loaded.</strong> Run <code>python -m src.train</code> to train it, then restart the app.</div>
+{% endif %}
+{% if errors.get('_form') %}<div class="alert alert-error">{{ errors['_form'] }}</div>{% endif %}
+{% if errors and not errors.get('_form') %}
+  <div class="alert alert-error">Please fix the highlighted fields below.</div>
+{% endif %}
+
+{% if result %}
+<section class="card result {{ 'result-rain' if result.will_rain else 'result-dry' }}" id="result">
+  <div class="result-head">
+    <div>
+      <p class="eyebrow">Prediction for tomorrow</p>
+      <h2>{{ '🌧️' if result.will_rain else '☀️' }} {{ result.prediction }}</h2>
+      <p class="muted">Rain probability <strong>{{ '%.1f'|format(result.probability_rain * 100) }}%</strong> ·
+        No-rain probability {{ '%.1f'|format(result.probability_no_rain * 100) }}% ·
+        Risk level <span class="pill pill-{{ result.risk_level|lower }}">{{ result.risk_level }}</span></p>
+    </div>
+  </div>
+
+  <div class="charts">
+    <figure><img alt="Gauge showing {{ '%.0f'|format(result.probability_rain * 100) }}% chance of rain" src="data:image/png;base64,{{ result.gauge }}"></figure>
+    {% if result.comparison %}
+    <figure><img alt="Your inputs compared with typical conditions before rainy and dry days" src="data:image/png;base64,{{ result.comparison }}"></figure>
+    {% endif %}
+  </div>
+
+  <h3>What this means</h3>
+  <dl class="guidance">
+    {% for k, v in result.guidance.items() %}<div><dt>{{ k }}</dt><dd>{{ v }}</dd></div>{% endfor %}
+  </dl>
+
+  {% if result.imputed_fields %}
+  <p class="muted small">Not provided, so filled with typical training-data values:
+    {{ result.imputed_fields|join(', ') }}. Supplying more fields generally gives a more reliable estimate.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+<form method="post" action="{{ url_for('predict') }}" class="card" novalidate id="predict-form">
+  <div class="examples">
+    <span class="muted">Try an example:</span>
+    <button type="button" class="btn btn-ghost" data-example="rainy">🌧️ Rainy-looking day</button>
+    <button type="button" class="btn btn-ghost" data-example="sunny">☀️ Clear day</button>
+    <button type="reset" class="btn btn-ghost" id="clear-btn">Clear</button>
+  </div>
+
+  <fieldset>
+    <legend>Place &amp; date</legend>
+    <div class="grid">
+      {% if locations %}{{ select_field('Location', 'Location', locations, 'Any / unknown') }}{% endif %}
+      {{ num_field('Month') }}
+    </div>
+  </fieldset>
+
+  {% for title, fields in sections %}
+  <fieldset>
+    <legend>{{ title }}</legend>
+    <div class="grid">
+      {% for f in fields %}{{ num_field(f) }}{% endfor %}
+    </div>
+  </fieldset>
+  {% endfor %}
+
+  <fieldset>
+    <legend>Wind direction &amp; rain today</legend>
+    <div class="grid">
+      {{ select_field('WindGustDir', 'Wind gust direction', wind_dirs) }}
+      {{ select_field('WindDir9am', 'Wind direction 9am', wind_dirs) }}
+      {{ select_field('WindDir3pm', 'Wind direction 3pm', wind_dirs) }}
+      {{ select_field('RainToday', 'Did it rain today?', ['Yes', 'No'], 'Auto (from rainfall)') }}
+    </div>
+  </fieldset>
+
+  <div class="actions">
+    <button type="submit" class="btn btn-primary" {{ 'disabled' if load_error }}>Predict tomorrow's rainfall</button>
+  </div>
+</form>
+
+<script>
+  const EXAMPLES = {{ examples|tojson }};
+  document.querySelectorAll('[data-example]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const data = EXAMPLES[btn.dataset.example];
+      Object.entries(data).forEach(([k, v]) => {
+        const el = document.getElementById(k);
+        if (el) el.value = v;
+      });
+    });
+  });
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    document.querySelectorAll('#predict-form input, #predict-form select').forEach(el => { el.value = ''; });
+  });
+  {% if result %}document.getElementById('result').scrollIntoView({behavior: 'smooth', block: 'start'});{% endif %}
+</script>
+{% endblock %}

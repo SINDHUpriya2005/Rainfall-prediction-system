@@ -1,0 +1,12 @@
+# One-click deploy on Render.com (Blueprint). The trained model in models/ is committed to the repo.
+services:
+  - type: web
+    name: rainfall-prediction-system
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-deploy.txt
+    startCommand: gunicorn app.app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9

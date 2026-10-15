@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }} · Rainfall Predictor{% endblock %}
+{% block content %}
+<section class="hero center">
+  <h1>{{ code }}</h1>
+  <p>{{ message }}</p>
+  <a class="btn btn-primary" href="{{ url_for('index') }}">Back to the predictor</a>
+</section>
+{% endblock %}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Rainfall Prediction System{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="{{ url_for('index') }}">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4 4 0 0 1 0 8z"/><path d="M8 22l1-2M12 22l1-2M16 22l1-2" /></svg>
+        <span>Rainfall Predictor</span>
+      </a>
+      <nav>
+        <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint in ('index','predict') }}">Predict</a>
+        <a href="{{ url_for('models_page') }}" class="{{ 'active' if request.endpoint == 'models_page' }}">Model results</a>
+      </nav>
+    </div>
+  </header>
+
+  {% if is_synthetic %}
+  <div class="banner banner-warn">
+    <div class="container">Demo mode: this model was trained on <strong>synthetic</strong> data. Add the real
+    <code>weatherAUS.csv</code> and retrain (<code>python -m src.train</code>) for real-world predictions.</div>
+  </div>
+  {% endif %}
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      Predictions are statistical estimates, not an official weather forecast.
+      {% if model_name %}Model: <strong>{{ model_name }}</strong>.{% endif %}
+    </div>
+  </footer>
+</body>
+</html>
